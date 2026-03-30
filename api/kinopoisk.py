@@ -1,18 +1,52 @@
 import requests
+import logging
 from config_data.config import API_URL, HEADERS
+from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
+
+logging.basicConfig(
+    filename='Api_errors.log',
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8'
+)
 
 def get_movie_data(query):
     params = {
         'query': query,
-        'limit': 1
+        'limit': 10
     }
     try:
-        response = requests.get(API_URL, headers=HEADERS, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('docs'):
-                return data['docs'][0]
+        response = requests.get(API_URL, headers=HEADERS, params=params, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+        if data.get('docs'):
+            return data['docs']
+
+        logging.warning(f"Фильм '{query}' не найден.")
         return None
-    except Exception as e:
-        print('Ошибка запроса:', e)
+
+        # 2. Обрабатываем ТАЙМАУТ (сервер думал слишком долго)
+    except Timeout:
+        logging.error(f"Тайм-аут ожидания для: {query}")
+        return None
+
+        # 3. Обрабатываем ОШИБКИ СЕТИ (нет интернета, сервер упал, неверный URL)
+    except ConnectionError:
+        logging.error(f"Проблема с соединением (проверьте интернет или URL) для: {query}")
+        return None
+
+        # 4. Обрабатываем ОШИБКИ HTTP (если response.raise_for_status() поймал 4xx или 5xx)
+    except HTTPError as e:
+        logging.error(f"Ошибка сервера (статус {response.status_code}) для: {query}: {e}")
+        return None
+
+        # 5. Обрабатываем ВСЕ ОСТАЛЬНЫЕ сетевые ошибки (общий класс)
+    except RequestException as e:
+        logging.error(f"Неизвестная ошибка библиотеки requests: {e}")
+        return None
+
+        # 6. Обрабатываем ОШИБКИ ПАРСИНГА (если JSON пришел кривой)
+    except (ValueError, KeyError) as e:
+        logging.error(f"Ошибка при разборе данных JSON: {e}")
         return None

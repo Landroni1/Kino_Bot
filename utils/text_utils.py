@@ -1,6 +1,5 @@
 def clean_text(text):
-    cleaned = text.replace('хаО', ' ')
-    return cleaned[:600]
+    return text[:600]
 
 def clean_rating(rating):
     if isinstance(rating, (int, float)):
