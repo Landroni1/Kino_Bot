@@ -1,2 +1,3 @@
-from . import start_kb
-from . import stop_kb
+from . import start_kb, stop_kb
+
+__all__ = ["start_kb", "stop_kb"]
